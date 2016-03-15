@@ -37,7 +37,7 @@ public class ElasticHelper {
         IndicesExistsRequest request = new IndicesExistsRequest(indexName);
         IndicesExistsResponse response = client.admin().indices().exists(request).actionGet();
         if (!response.isExists()) {
-            Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.analyzer.default.type", "keyword").build();
+            Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.analyzer.default.type", "standard").build();
             CreateIndexRequestBuilder createIndexRequestBuilder = client.admin().indices().prepareCreate(indexName).setSettings(settings);
             client.admin().indices().create(createIndexRequestBuilder.request()).actionGet();
         }
@@ -102,6 +102,37 @@ public class ElasticHelper {
         if (queryBuilders.isEmpty()) {
             if (boolFilter.hasClauses())
                 return QueryBuilders.filteredQuery(QueryBuilders.matchAllQuery(), boolFilter);
+            else
+                return QueryBuilders.matchAllQuery();
+        } else {
+            BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
+            queryBuilders.forEach(pair -> {
+                if (pair.getValue1())
+                    boolQuery.must(pair.getValue0());
+                else boolQuery.mustNot(pair.getValue0());
+            });
+            return QueryBuilders.filteredQuery(boolQuery, boolFilter);
+        }
+    }
+
+    public static QueryBuilder createMatchPhraseQuery(List<HasContainer> hasContainers, FilterBuilder... filtersToAdd) {
+        BoolFilterBuilder boolFilter = FilterBuilders.boolFilter();
+        List<Pair<QueryBuilder, Boolean>> queryBuilders = new ArrayList<>();
+        if (hasContainers != null) hasContainers.forEach(has -> {
+            if (has.getBiPredicate() instanceof Text) {
+                addQuery(queryBuilders, has);
+            }
+        });
+        for (FilterBuilder filterBuilder : filtersToAdd) {
+            boolFilter.must(filterBuilder);
+        }
+
+        if (queryBuilders.isEmpty() && hasContainers!=null) {
+            if (boolFilter.hasClauses()) {
+                HasContainer hasContainer = hasContainers.get(0);
+                QueryBuilder matchQueryBuilder = QueryBuilders.matchPhraseQuery(hasContainer.getKey(),hasContainer.getValue());
+                return QueryBuilders.filteredQuery(matchQueryBuilder, boolFilter);
+            }
             else
                 return QueryBuilders.matchAllQuery();
         } else {

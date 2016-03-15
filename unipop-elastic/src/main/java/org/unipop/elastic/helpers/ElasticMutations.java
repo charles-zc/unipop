@@ -80,6 +80,7 @@ public class ElasticMutations {
         if (bulkRequest == null) return;
         timing.start("bulk");
         bulkRequest.execute().actionGet();
+        bulkRequest = client.prepareBulk();
         timing.stop("bulk");
     }
 

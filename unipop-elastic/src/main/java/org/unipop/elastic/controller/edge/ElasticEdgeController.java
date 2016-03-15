@@ -67,7 +67,8 @@ public class ElasticEdgeController implements org.unipop.controller.EdgeControll
     @Override
     public Iterator<BaseEdge> edges(Predicates predicates) {
         elasticMutations.refresh(indexName);
-        QueryBuilder query = ElasticHelper.createQuery(predicates.hasContainers, FilterBuilders.existsFilter(ElasticEdge.InId));
+  //      QueryBuilder query = ElasticHelper.createQuery(predicates.hasContainers, FilterBuilders.existsFilter(ElasticEdge.InId));
+        QueryBuilder query = ElasticHelper.createMatchPhraseQuery(predicates.hasContainers, FilterBuilders.existsFilter(ElasticEdge.InId));
 
         return new QueryIterator<>(query, scrollSize, predicates.limitHigh,
                 client, this::createEdge, timing, indexName);
